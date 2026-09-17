@@ -2,7 +2,7 @@
 
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Java](https://img.shields.io/badge/Java-17%2B-orange.svg)
-![Build](https://github.com/Mr-NobodyX7777/s-lab-sync-science-lab-manager-/actions/workflows/build.yml/badge.svg)
+![Build](https://github.com/OWNER/REPO/actions/workflows/build.yml/badge.svg)
 
 > Replace `OWNER/REPO` in the badge above with your actual GitHub
 > `username/repository-name` once this is pushed, so the build badge resolves.
@@ -36,7 +36,14 @@ supervised by which teacher, and when).
 - **Username:** `Master`
 - **Password:** `7777`
 
-This is the app's own login screen. Entering these credentials unlocks the full dashboard.
+These are the defaults the app ships with — entering them on the login
+screen unlocks the full dashboard the first time you run it.
+
+You can change them at any time from the login screen itself: click
+**"Change master login"** below the login button, confirm your current
+password, then set a new username and password. The new login is saved as
+a salted SHA-256 hash (not plain text) to `~/.labmanager/master.properties`
+on that computer, so it's remembered for future launches.
 
 ## MySQL Login
 The **first time the app runs on a computer**, it will ask for that computer's
@@ -151,14 +158,18 @@ src/com/labmanager/
   db/Database.java            - holds the current MySQL connection details (set at runtime)
   db/DbCredentials.java       - simple host/port/user/password holder
   db/DbCredentialsStore.java  - saves/loads the MySQL login to ~/.labmanager/db.properties
+  db/MasterCredentialsStore.java - saves/loads the app's own login (salted hash) to ~/.labmanager/master.properties
   db/SchemaInitializer.java   - creates database & tables on first run
   model/                      - plain data classes (Student, Teacher, etc.)
   dao/                        - database read/write logic for each table
   ui/                         - all Swing screens (DB setup, login, dashboard, panels)
 ```
 
-To change the master password, edit `MASTER_USER` / `MASTER_PASS` at the top
-of `src/com/labmanager/ui/LoginFrame.java`, then recompile.
+The master login is no longer hard-coded. `db/MasterCredentialsStore.java`
+saves a salted hash of it to `~/.labmanager/master.properties`, and you can
+change it from inside the app via the **"Change master login"** link on the
+login screen — see [Master Login](#master-login) above. No recompiling
+needed for that; you'd only touch this file to change how/where it's stored.
 
 Building from source (no build tool required — plain `javac`):
 
