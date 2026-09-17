@@ -1,5 +1,6 @@
 package com.labmanager.ui;
 
+import com.labmanager.db.MasterCredentialsStore;
 import com.labmanager.db.SchemaInitializer;
 
 import javax.swing.*;
@@ -11,14 +12,12 @@ import java.awt.event.WindowEvent;
 
 public class LoginFrame extends JFrame {
 
-    private static final String MASTER_USER = "Master";
-    private static final String MASTER_PASS = "7777";
-
     private final JTextField userField = new JTextField();
     private final JPasswordField passField = new JPasswordField();
     private final JLabel statusLabel = new JLabel(" ");
 
     public LoginFrame() {
+        MasterCredentialsStore.ensureInitialized();
         setTitle("S Lab Sync - Login");
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setUndecorated(true);
@@ -90,9 +89,13 @@ public class LoginFrame extends JFrame {
         gc.gridy = 8; gc.insets = new Insets(10, 4, 4, 4);
         card.add(loginBtn, gc);
 
-        JLabel hint = new JLabel("", SwingConstants.CENTER);
+        JLabel hint = new JLabel("Change master login", SwingConstants.CENTER);
         hint.setFont(UITheme.FONT_LABEL);
-        hint.setForeground(UITheme.TEXT_MUTED);
+        hint.setForeground(UITheme.ACCENT_DARK);
+        hint.setCursor(new Cursor(Cursor.HAND_CURSOR));
+        hint.addMouseListener(new MouseAdapter() {
+            @Override public void mouseClicked(MouseEvent e) { changeMasterLogin(); }
+        });
         gc.gridy = 9; gc.insets = new Insets(14, 4, 0, 4);
         card.add(hint, gc);
 
@@ -122,7 +125,7 @@ public class LoginFrame extends JFrame {
         String user = userField.getText().trim();
         String pass = new String(passField.getPassword());
 
-        if (!user.equals(MASTER_USER) || !pass.equals(MASTER_PASS)) {
+        if (!MasterCredentialsStore.verify(user, pass)) {
             statusLabel.setText("Invalid username or password.");
             return;
         }
@@ -158,6 +161,54 @@ public class LoginFrame extends JFrame {
             }
         };
         worker.execute();
+    }
+
+    private void changeMasterLogin() {
+        JPasswordField currentField = new JPasswordField();
+        int r1 = JOptionPane.showConfirmDialog(this, currentField, "Enter current password",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (r1 != JOptionPane.OK_OPTION) return;
+
+        String current = new String(currentField.getPassword());
+        if (!MasterCredentialsStore.verify(MasterCredentialsStore.loadUsername(), current)) {
+            JOptionPane.showMessageDialog(this, "Current password is incorrect.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        JTextField newUserField = new JTextField(MasterCredentialsStore.loadUsername());
+        JPasswordField newPassField = new JPasswordField();
+        JPasswordField confirmField = new JPasswordField();
+        JPanel panel = new JPanel(new GridLayout(0, 1, 4, 4));
+        panel.add(new JLabel("New username"));
+        panel.add(newUserField);
+        panel.add(new JLabel("New password"));
+        panel.add(newPassField);
+        panel.add(new JLabel("Confirm new password"));
+        panel.add(confirmField);
+
+        int r2 = JOptionPane.showConfirmDialog(this, panel, "Change Master Login",
+                JOptionPane.OK_CANCEL_OPTION, JOptionPane.PLAIN_MESSAGE);
+        if (r2 != JOptionPane.OK_OPTION) return;
+
+        String newUser = newUserField.getText().trim();
+        String newPass = new String(newPassField.getPassword());
+        String confirm = new String(confirmField.getPassword());
+
+        if (newUser.isEmpty() || newPass.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Username and password can't be empty.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        if (!newPass.equals(confirm)) {
+            JOptionPane.showMessageDialog(this, "Passwords do not match.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        try {
+            MasterCredentialsStore.save(newUser, newPass);
+            JOptionPane.showMessageDialog(this, "Master login updated.", "Updated", JOptionPane.INFORMATION_MESSAGE);
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, "Could not save: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private void setEnabledAll(boolean enabled) {
